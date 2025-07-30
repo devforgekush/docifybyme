@@ -3,44 +3,78 @@ import { getServerSession } from 'next-auth/next'
 import { GitHubService, GitHubRepository } from '@/lib/github-service'
 import { createRouteClient } from '@/lib/supabase'
 
+// Import authOptions from NextAuth route
+import NextAuth, { NextAuthOptions } from 'next-auth'
+import GithubProvider from 'next-auth/providers/github'
+
+const authOptions: NextAuthOptions = {
+  providers: [
+    GithubProvider({
+      clientId: process.env.GITHUB_CLIENT_ID || 'demo-client-id',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'demo-client-secret',
+      authorization: {
+        params: {
+          scope: 'read:user user:email repo'
+        }
+      }
+    })
+  ],
+  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    async jwt({ token, account, profile }) {
+      if (account?.provider === 'github' && profile) {
+        token.githubId = profile.id
+        token.username = profile.login
+        token.accessToken = account.access_token || ''
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.githubId = token.githubId as number
+        session.user.username = token.username as string
+        session.accessToken = token.accessToken as string
+      }
+      return session
+    }
+  }
+}
+
 export async function GET() {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
-    if (!session?.accessToken || !session?.user) {
+    if (!session?.accessToken || !session?.user?.githubId) {
+      console.log('No valid session found:', { 
+        hasSession: !!session, 
+        hasAccessToken: !!session?.accessToken,
+        hasGithubId: !!session?.user?.githubId 
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('Fetching repositories for user:', session.user.username)
 
     // Get repositories from GitHub
     const githubService = new GitHubService(session.accessToken)
     const repositories = await githubService.getUserRepositories()
 
-    // Get documentation status from Supabase
-    const supabase = await createRouteClient()
-    const { data: dbRepos } = await supabase
-      .from('repositories')
-      .select('github_repo_id, documentation_status, documentation_content, last_generated')
-      .eq('user_id', session.user.id)
+    console.log(`Found ${repositories.length} repositories from GitHub`)
 
-    // Merge GitHub data with database status
-    const reposWithStatus = repositories.map(repo => {
-      const dbRepo = dbRepos?.find((db: { github_repo_id: number }) => db.github_repo_id === repo.id)
-      return {
-        ...repo,
-        documentation_status: dbRepo?.documentation_status || 'pending',
-        documentation_content: dbRepo?.documentation_content,
-        last_generated: dbRepo?.last_generated
-      }
-    })
-
-    // Sync repositories to database
-    await syncRepositoriesToDatabase(repositories, session.user.id)
+    // For now, return repositories without database integration
+    // TODO: Re-enable database integration after setting up tables
+    const reposWithStatus = repositories.map(repo => ({
+      ...repo,
+      documentation_status: 'pending' as const,
+      documentation_content: null,
+      last_generated: null
+    }))
 
     return NextResponse.json(reposWithStatus)
   } catch (error) {
     console.error('Error fetching repositories:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch repositories' },
+      { error: 'Failed to fetch repositories', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
