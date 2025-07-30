@@ -77,14 +77,39 @@ export async function POST(request: NextRequest) {
 
     console.log(`Starting documentation generation for ${owner}/${name}`)
 
-    // Generate documentation synchronously to return it immediately
-    const result = await generateDocumentationSync(session.accessToken, owner, name, repositoryId, session.user.githubId)
+    // Add timeout protection (30 seconds)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Documentation generation timeout after 30 seconds')), 30000)
+    })
 
-    return NextResponse.json(result)
+    try {
+      // Generate documentation with timeout protection
+      const result = await Promise.race([
+        generateDocumentationSync(session.accessToken, owner, name, repositoryId, session.user.githubId),
+        timeoutPromise
+      ])
+
+      return NextResponse.json(result)
+    } catch (timeoutError) {
+      console.error('Timeout or generation error:', timeoutError)
+      
+      // Return a fallback response for timeout
+      return NextResponse.json({
+        success: false,
+        error: 'Documentation generation timed out. This may be due to high server load or API limits. Please try again later.',
+        repositoryId: repositoryId,
+        timestamp: new Date().toISOString()
+      }, { status: 408 }) // Request Timeout
+    }
+
   } catch (error) {
     console.error('Error generating documentation:', error)
     return NextResponse.json(
-      { error: 'Failed to generate documentation', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to generate documentation', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }

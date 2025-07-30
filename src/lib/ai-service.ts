@@ -124,13 +124,37 @@ export class AIService {
   private currentProviderIndex: number = 0
 
   constructor() {
-    this.providers = [
-      new GeminiProvider(),
-      new MistralProvider()
-    ]
+    this.providers = []
+    
+    // Only add providers if their API keys are available
+    try {
+      if (process.env.GOOGLE_GEMINI_API_KEY) {
+        this.providers.push(new GeminiProvider())
+        console.log('Gemini provider initialized')
+      }
+    } catch (error) {
+      console.warn('Failed to initialize Gemini provider:', error)
+    }
+
+    try {
+      if (process.env.MISTRAL_API_KEY) {
+        this.providers.push(new MistralProvider())
+        console.log('Mistral provider initialized')
+      }
+    } catch (error) {
+      console.warn('Failed to initialize Mistral provider:', error)
+    }
+
+    if (this.providers.length === 0) {
+      console.error('No AI providers available! Please check your environment variables.')
+    }
   }
 
   async generateDocumentation(repositoryData: Record<string, unknown>): Promise<{ content: string; provider: string }> {
+    if (this.providers.length === 0) {
+      throw new Error('No AI providers are configured. Please check your environment variables (GOOGLE_GEMINI_API_KEY, MISTRAL_API_KEY).')
+    }
+
     let lastError: Error | null = null
 
     // Try each provider in order
@@ -138,7 +162,9 @@ export class AIService {
       const provider = this.providers[this.currentProviderIndex]
       
       try {
+        console.log(`Attempting documentation generation with ${provider.name}...`)
         const content = await provider.generateDocumentation(repositoryData)
+        console.log(`Successfully generated documentation with ${provider.name}`)
         return { content, provider: provider.name }
       } catch (error) {
         console.error(`${provider.name} failed:`, error)
@@ -149,11 +175,23 @@ export class AIService {
       }
     }
 
-    throw new Error(`All AI providers failed. Last error: ${lastError?.message}`)
+    // If all providers fail, provide a helpful error message
+    const errorMessage = this.providers.length === 1 
+      ? `AI provider (${this.providers[0].name}) failed: ${lastError?.message}`
+      : `All ${this.providers.length} AI providers failed. Last error: ${lastError?.message}`
+    
+    throw new Error(errorMessage)
   }
 
   getCurrentProvider(): string {
+    if (this.providers.length === 0) {
+      return 'none'
+    }
     return this.providers[this.currentProviderIndex].name
+  }
+
+  getAvailableProviders(): string[] {
+    return this.providers.map(p => p.name)
   }
 }
 

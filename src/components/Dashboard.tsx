@@ -77,7 +77,7 @@ export default function Dashboard() {
     fetchRepositories()
   }, [fetchRepositories])
 
-  const generateDocumentation = useCallback(async (repo: Repository) => {
+  const generateDocumentation = useCallback(async (repo: Repository, retryCount = 0) => {
     setGeneratingRepos(prev => new Set(prev).add(repo.id))
     
     try {
@@ -90,7 +90,9 @@ export default function Dashboard() {
           repositoryId: repo.id,
           owner: repo.full_name.split('/')[0],
           name: repo.name
-        })
+        }),
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(45000) // 45 second timeout
       })
 
       const result = await response.json()
@@ -118,6 +120,13 @@ export default function Dashboard() {
           provider: result.provider
         })
       } else {
+        // Check if this is a timeout and we can retry
+        if (response.status === 408 && retryCount < 2) {
+          console.log(`Retrying documentation generation for ${repo.name} (attempt ${retryCount + 2})`)
+          setTimeout(() => generateDocumentation(repo, retryCount + 1), 2000)
+          return
+        }
+        
         // Update repository status to failed
         setRepositories(prev => 
           prev.map(r => 
@@ -138,7 +147,23 @@ export default function Dashboard() {
             : r
         )
       )
-      setError('Network error occurred while generating documentation')
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Network error occurred while generating documentation'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('fetch')) {
+          errorMessage = 'Request timed out. The AI service may be experiencing high load. Please try again in a few moments.'
+        } else if (error.message.includes('unauthorized') || error.message.includes('401')) {
+          errorMessage = 'Authentication error. Please sign out and sign in again.'
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = 'API rate limit exceeded. Please wait a few minutes before trying again.'
+        } else {
+          errorMessage = `Error: ${error.message}`
+        }
+      }
+      
+      setError(errorMessage)
     } finally {
       setGeneratingRepos(prev => {
         const newSet = new Set(prev)
