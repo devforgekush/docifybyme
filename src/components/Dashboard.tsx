@@ -9,7 +9,6 @@ import {
   GitFork, 
   BookOpen, 
   RefreshCw, 
-  Download,
   LogOut,
   Search,
   Filter,
@@ -18,7 +17,10 @@ import {
   AlertCircle,
   Loader,
   Menu,
-  X
+  X,
+  Copy,
+  Check,
+  FileText
 } from 'lucide-react'
 import { GitHubRepository } from '@/lib/github-service'
 
@@ -38,16 +40,30 @@ export default function Dashboard() {
   const [generatingRepos, setGeneratingRepos] = useState<Set<number>>(new Set())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [documentationModal, setDocumentationModal] = useState<{
+    isOpen: boolean
+    content: string
+    repositoryName: string
+    provider?: string
+  }>({
+    isOpen: false,
+    content: '',
+    repositoryName: '',
+    provider: ''
+  })
+  const [copied, setCopied] = useState(false)
 
   const fetchRepositories = useCallback(async () => {
     try {
       setError(null)
+      setLoading(true)
       const response = await fetch('/api/repositories')
       if (response.ok) {
         const data = await response.json()
         setRepositories(data)
       } else {
-        setError('Failed to fetch repositories')
+        const errorData = await response.json().catch(() => ({}))
+        setError(errorData.error || 'Failed to fetch repositories')
       }
     } catch (error) {
       console.error('Error fetching repositories:', error)
@@ -60,51 +76,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchRepositories()
   }, [fetchRepositories])
-
-  const pollDocumentationStatus = useCallback(async (repoId: number) => {
-    const poll = async () => {
-      try {
-        const response = await fetch(`/api/documentation-status/${repoId}`)
-        if (response.ok) {
-          const data = await response.json()
-          
-          setRepositories(prev => 
-            prev.map(r => 
-              r.id === repoId 
-                ? { 
-                    ...r, 
-                    documentation_status: data.status,
-                    documentation_content: data.documentation_content,
-                    last_generated: data.last_generated
-                  }
-                : r
-            )
-          )
-
-          if (data.status === 'completed' || data.status === 'failed') {
-            setGeneratingRepos(prev => {
-              const newSet = new Set(prev)
-              newSet.delete(repoId)
-              return newSet
-            })
-            return
-          }
-
-          // Continue polling
-          setTimeout(poll, 3000)
-        }
-      } catch (error) {
-        console.error('Error polling status:', error)
-        setGeneratingRepos(prev => {
-          const newSet = new Set(prev)
-          newSet.delete(repoId)
-          return newSet
-        })
-      }
-    }
-
-    poll()
-  }, [])
 
   const generateDocumentation = useCallback(async (repo: Repository) => {
     setGeneratingRepos(prev => new Set(prev).add(repo.id))
@@ -122,30 +93,93 @@ export default function Dashboard() {
         })
       })
 
-      if (response.ok) {
-        // Update repository status
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // Update repository status to completed
         setRepositories(prev => 
           prev.map(r => 
             r.id === repo.id 
-              ? { ...r, documentation_status: 'generating' }
+              ? { 
+                  ...r, 
+                  documentation_status: 'completed',
+                  documentation_content: result.content,
+                  last_generated: result.timestamp
+                }
               : r
           )
         )
         
-        // Poll for completion
-        pollDocumentationStatus(repo.id)
+        // Show the documentation in a modal
+        setDocumentationModal({
+          isOpen: true,
+          content: result.content,
+          repositoryName: repo.name,
+          provider: result.provider
+        })
       } else {
-        throw new Error('Failed to start documentation generation')
+        // Update repository status to failed
+        setRepositories(prev => 
+          prev.map(r => 
+            r.id === repo.id 
+              ? { ...r, documentation_status: 'failed' }
+              : r
+          )
+        )
+        
+        setError(result.error || 'Failed to generate documentation')
       }
     } catch (error) {
       console.error('Error generating documentation:', error)
+      setRepositories(prev => 
+        prev.map(r => 
+          r.id === repo.id 
+            ? { ...r, documentation_status: 'failed' }
+            : r
+        )
+      )
+      setError('Network error occurred while generating documentation')
+    } finally {
       setGeneratingRepos(prev => {
         const newSet = new Set(prev)
         newSet.delete(repo.id)
         return newSet
       })
     }
-  }, [pollDocumentationStatus])
+  }, [])
+
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      const timeoutId = setTimeout(() => setCopied(false), 2000)
+      // Return cleanup function if needed
+      return () => clearTimeout(timeoutId)
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setCopied(true)
+      const timeoutId = setTimeout(() => setCopied(false), 2000)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [])
+
+  const showDocumentation = useCallback((repo: Repository) => {
+    if (repo.documentation_content) {
+      setDocumentationModal({
+        isOpen: true,
+        content: repo.documentation_content,
+        repositoryName: repo.name,
+        provider: 'Previously Generated'
+      })
+    }
+  }, [])
 
   const filteredRepositories = useMemo(() => {
     const filtered = repositories.filter(repo => {
@@ -395,24 +429,35 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    onClick={() => generateDocumentation(repo)}
-                    disabled={generatingRepos.has(repo.id) || repo.documentation_status === 'generating'}
-                    className="flex-1 bg-blue-500 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base"
-                  >
-                    {generatingRepos.has(repo.id) || repo.documentation_status === 'generating' ? (
-                      <>
-                        <Loader className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                        <span>Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Generate Docs</span>
-                        <span className="sm:hidden">Generate</span>
-                      </>
-                    )}
-                  </button>
+                  {repo.documentation_status === 'completed' ? (
+                    <button
+                      onClick={() => showDocumentation(repo)}
+                      className="flex-1 bg-green-500 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
+                    >
+                      <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">View Documentation</span>
+                      <span className="sm:hidden">View Docs</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => generateDocumentation(repo)}
+                      disabled={generatingRepos.has(repo.id) || repo.documentation_status === 'generating'}
+                      className="flex-1 bg-blue-500 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base"
+                    >
+                      {generatingRepos.has(repo.id) || repo.documentation_status === 'generating' ? (
+                        <>
+                          <Loader className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">Generate Docs</span>
+                          <span className="sm:hidden">Generate</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   
                   <a
                     href={repo.html_url}
@@ -423,20 +468,6 @@ export default function Dashboard() {
                     <Github className="w-3 h-3 sm:w-4 sm:h-4" />
                   </a>
                 </div>
-
-                {repo.documentation_status === 'completed' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t"
-                  >
-                    <button className="w-full bg-green-500 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base">
-                      <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Download Documentation</span>
-                      <span className="sm:hidden">Download</span>
-                    </button>
-                  </motion.div>
-                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -455,6 +486,87 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Documentation Modal */}
+      <AnimatePresence>
+        {documentationModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setDocumentationModal(prev => ({ ...prev, isOpen: false }))}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    Documentation: {documentationModal.repositoryName}
+                  </h2>
+                  {documentationModal.provider && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Generated by: {documentationModal.provider}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => copyToClipboard(documentationModal.content)}
+                    className="flex items-center space-x-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setDocumentationModal(prev => ({ ...prev, isOpen: false }))}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-auto p-4 sm:p-6">
+                <div className="prose max-w-none">
+                  <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg border text-gray-800 leading-relaxed">
+                    {documentationModal.content}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-t bg-gray-50">
+                <p className="text-sm text-gray-500">
+                  Documentation generated successfully. You can copy this content to use in your project.
+                </p>
+                <button
+                  onClick={() => setDocumentationModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer with Developer Credits */}
       <footer className="bg-white border-t mt-12">

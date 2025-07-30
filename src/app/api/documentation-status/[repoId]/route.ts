@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { repoId: string } }
+  { params }: { params: Promise<{ repoId: string }> }
 ) {
   try {
-    const repoId = params.repoId
+    const { repoId } = await params
 
     // For now, return a mock status since we're not using database
     // In a real implementation, this would check the database

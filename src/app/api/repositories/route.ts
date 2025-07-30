@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { GitHubService, GitHubRepository } from '@/lib/github-service'
-import { createRouteClient } from '@/lib/supabase'
+import { GitHubService } from '@/lib/github-service'
 
 // Import authOptions from NextAuth route
-import NextAuth, { NextAuthOptions } from 'next-auth'
+import { NextAuthOptions } from 'next-auth'
 import GithubProvider from 'next-auth/providers/github'
 
 const authOptions: NextAuthOptions = {
   providers: [
     GithubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || 'demo-client-id',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'demo-client-secret',
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: 'read:user user:email repo'
@@ -77,28 +76,5 @@ export async function GET() {
       { error: 'Failed to fetch repositories', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
-  }
-}
-
-async function syncRepositoriesToDatabase(repositories: GitHubRepository[], userId: string) {
-  const supabase = await createRouteClient()
-
-  for (const repo of repositories) {
-    await supabase
-      .from('repositories')
-      .upsert({
-        user_id: userId,
-        github_repo_id: repo.id,
-        name: repo.name,
-        full_name: repo.full_name,
-        description: repo.description,
-        html_url: repo.html_url,
-        language: repo.language,
-        stargazers_count: repo.stargazers_count,
-        forks_count: repo.forks_count,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'github_repo_id'
-      })
   }
 }

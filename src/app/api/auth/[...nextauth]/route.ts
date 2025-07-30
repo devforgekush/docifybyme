@@ -1,12 +1,11 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import GithubProvider from 'next-auth/providers/github'
-import { createRouteClient } from '@/lib/supabase'
 
 const authOptions: NextAuthOptions = {
   providers: [
     GithubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || 'demo-client-id',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'demo-client-secret',
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: 'read:user user:email repo'

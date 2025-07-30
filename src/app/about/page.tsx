@@ -116,7 +116,7 @@ export default function AboutPage() {
                   </a>
                 </div>
                 <div className="mt-6 text-sm text-gray-500">
-                  <p>"Passionate about creating innovative solutions that make developers' lives easier."</p>
+                  <p>&ldquo;Passionate about creating innovative solutions that make developers&rsquo; lives easier.&rdquo;</p>
                 </div>
               </div>
             </section>
