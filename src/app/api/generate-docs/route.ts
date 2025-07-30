@@ -4,11 +4,48 @@ import { GitHubService } from '@/lib/github-service'
 import { aiService } from '@/lib/ai-service'
 import { createRouteClient } from '@/lib/supabase'
 
+// Import authOptions for proper session handling
+import { NextAuthOptions } from 'next-auth'
+import GithubProvider from 'next-auth/providers/github'
+
+const authOptions: NextAuthOptions = {
+  providers: [
+    GithubProvider({
+      clientId: process.env.GITHUB_CLIENT_ID || 'demo-client-id',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'demo-client-secret',
+      authorization: {
+        params: {
+          scope: 'read:user user:email repo'
+        }
+      }
+    })
+  ],
+  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    async jwt({ token, account, profile }) {
+      if (account?.provider === 'github' && profile) {
+        token.githubId = profile.id
+        token.username = profile.login
+        token.accessToken = account.access_token || ''
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.githubId = token.githubId as number
+        session.user.username = token.username as string
+        session.accessToken = token.accessToken as string
+      }
+      return session
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
-    if (!session?.accessToken || !session?.user) {
+    if (!session?.accessToken || !session?.user?.githubId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -21,45 +58,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createRouteClient()
-
-    // Update repository status to generating
-    await supabase
-      .from('repositories')
-      .update({
-        documentation_status: 'generating',
-        updated_at: new Date().toISOString()
-      })
-      .eq('github_repo_id', repositoryId)
-      .eq('user_id', session.user.id)
-
-    // Create documentation job
-    const { data: jobData, error: jobError } = await supabase
-      .from('documentation_jobs')
-      .insert({
-        user_id: session.user.id,
-        repository_id: repositoryId,
-        status: 'processing',
-        ai_provider: aiService.getCurrentProvider()
-      })
-      .select()
-      .single()
-
-    if (jobError) {
-      throw new Error('Failed to create documentation job')
-    }
+    console.log(`Starting documentation generation for ${owner}/${name}`)
 
     // Start documentation generation in background
-    generateDocumentationAsync(session.accessToken, owner, name, repositoryId, session.user.id, jobData.id)
+    generateDocumentationAsync(session.accessToken, owner, name, repositoryId, session.user.githubId)
 
     return NextResponse.json({ 
       message: 'Documentation generation started',
-      jobId: jobData.id
+      repositoryId: repositoryId
     })
   } catch (error) {
     console.error('Error starting documentation generation:', error)
     return NextResponse.json(
-      { error: 'Failed to start documentation generation' },
+      { error: 'Failed to start documentation generation', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -70,19 +81,31 @@ async function generateDocumentationAsync(
   owner: string,
   name: string,
   repositoryId: number,
-  userId: string,
-  jobId: string
+  githubUserId: number
 ) {
-  const supabase = await createRouteClient()
-
   try {
+    console.log(`Generating documentation for ${owner}/${name}...`)
+
     // Fetch repository data from GitHub
     const githubService = new GitHubService(accessToken)
     const repositoryData = await githubService.getRepositoryData(owner, name)
 
+    console.log(`Fetched repository data for ${owner}/${name}`)
+
     // Generate documentation using AI
     const { content, provider } = await aiService.generateDocumentation(repositoryData)
 
+    console.log(`Generated documentation using ${provider} for ${owner}/${name}`)
+
+    // For now, log the documentation instead of saving to database
+    console.log(`Documentation generated successfully for ${owner}/${name}:`)
+    console.log(`Provider: ${provider}`)
+    console.log(`Content length: ${content.length} characters`)
+    
+    // TODO: Save to database when tables are ready
+    /*
+    const supabase = await createRouteClient()
+    
     // Update repository with generated documentation
     await supabase
       .from('repositories')
@@ -93,21 +116,17 @@ async function generateDocumentationAsync(
         updated_at: new Date().toISOString()
       })
       .eq('github_repo_id', repositoryId)
-      .eq('user_id', userId)
-
-    // Update job status
-    await supabase
-      .from('documentation_jobs')
-      .update({
-        status: 'completed',
-        ai_provider: provider,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
+      .eq('github_user_id', githubUserId)
+    */
 
   } catch (error) {
     console.error('Error generating documentation:', error)
-
+    console.error(`Failed to generate documentation for ${owner}/${name}:`, error instanceof Error ? error.message : 'Unknown error')
+    
+    // TODO: Update database status when tables are ready
+    /*
+    const supabase = await createRouteClient()
+    
     // Update repository status to failed
     await supabase
       .from('repositories')
@@ -116,16 +135,7 @@ async function generateDocumentationAsync(
         updated_at: new Date().toISOString()
       })
       .eq('github_repo_id', repositoryId)
-      .eq('user_id', userId)
-
-    // Update job status
-    await supabase
-      .from('documentation_jobs')
-      .update({
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
+      .eq('github_user_id', githubUserId)
+    */
   }
 }
