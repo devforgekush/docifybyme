@@ -455,6 +455,30 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Footer with Developer Credits */}
+      <footer className="bg-white border-t mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4 sm:mb-0">
+              <BookOpen className="w-4 h-4" />
+              <span>DocifyByMe - AI-Powered Documentation Generator</span>
+            </div>
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <span>Developed by <strong className="text-gray-700">Kushagra</strong></span>
+              <span>•</span>
+              <a 
+                href="/about" 
+                className="text-blue-500 hover:text-blue-600 transition-colors"
+              >
+                About
+              </a>
+              <span>•</span>
+              <span>{new Date().getFullYear()}</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

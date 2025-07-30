@@ -62,7 +62,7 @@ export default function LoginPage() {
   // Simple 2D fallback if 3D fails to load
   if (!use3D) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4">
         <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-slate-700 max-w-md w-full">
           <div className="text-center">
             <div className="flex items-center justify-center mb-6">
@@ -97,12 +97,18 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        
+        {/* Developer Credits */}
+        <div className="mt-8 text-center text-slate-400 text-sm">
+          <p>Developed by <span className="text-slate-300 font-medium">Kushagra</span></p>
+          <p className="mt-1">&copy; {new Date().getFullYear()} DocifyByMe</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="relative min-h-screen">
       <Login3D />
       <button
         onClick={() => setUse3D(false)}
@@ -110,6 +116,12 @@ export default function LoginPage() {
       >
         Use Simple Login
       </button>
+      
+      {/* Developer Credits for 3D Login */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 text-center text-white/70 text-sm">
+        <p>Developed by <span className="text-white font-medium">Kushagra</span></p>
+        <p className="mt-1">&copy; {new Date().getFullYear()} DocifyByMe</p>
+      </div>
     </div>
   )
 }

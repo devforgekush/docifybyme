@@ -15,7 +15,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "DocifyByMe - GitHub Documentation Generator",
-  description: "Generate beautiful documentation for your GitHub repositories using AI",
+  description: "Generate beautiful documentation for your GitHub repositories using AI. Developed by Kushagra.",
+  authors: [{ name: "Kushagra" }],
+  creator: "Kushagra",
+  keywords: ["GitHub", "Documentation", "AI", "Generator", "Kushagra", "DocifyByMe"],
 };
 
 export default function RootLayout({
