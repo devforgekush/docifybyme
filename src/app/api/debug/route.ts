@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(_request: NextRequest) {
+export async function GET(
+  _request: NextRequest // eslint-disable-line @typescript-eslint/no-unused-vars
+) {
   try {
     // Check environment variables
     const envCheck = {
       GOOGLE_GEMINI_API_KEY: !!process.env.GOOGLE_GEMINI_API_KEY,
       MISTRAL_API_KEY: !!process.env.MISTRAL_API_KEY,
+      OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
       GITHUB_CLIENT_ID: !!process.env.GITHUB_CLIENT_ID,
       GITHUB_CLIENT_SECRET: !!process.env.GITHUB_CLIENT_SECRET,
       NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
