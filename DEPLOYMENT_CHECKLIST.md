@@ -32,26 +32,6 @@
 
 ### Required Variables for Production:
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
-# NextAuth (generate 32+ char secret)
-NEXTAUTH_URL=https://your-domain.netlify.app
-NEXTAUTH_SECRET=your-very-long-secret-minimum-32-characters
-
-# GitHub OAuth
-GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
-GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# AI APIs
-GOOGLE_GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-MISTRAL_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# App Configuration
-NEXT_PUBLIC_APP_URL=https://your-domain.netlify.app
-```
 
 ---
 
