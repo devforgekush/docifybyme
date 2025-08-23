@@ -1,7 +1,6 @@
 # Netlify configuration file for DocifyByMe
 [build]
   command = "npm run build && npm run postbuild"
-  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -10,17 +9,8 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Handle Next.js App Router routing properly
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-
-# Client-side routing fallback
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Let the Netlify Next.js plugin manage API routes and publish directory
+# (do not override with custom /api/* or global fallback redirects)
 
 # Security headers
 [[headers]]
@@ -51,13 +41,4 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
 
-# Handle client-side routing
-[[redirects]]
-  from = "/dashboard"
-  to = "/dashboard/"
-  status = 301
-
-[[redirects]]
-  from = "/login"
-  to = "/login/"
-  status = 301
+# Optional: add project-specific redirects here if needed (avoid catching /api/* or global /*)
