@@ -426,7 +426,8 @@ export default function Dashboard() {
   }, [])
 
   const filteredRepositories = useMemo(() => {
-    const q = debouncedSearchTerm.trim().toLowerCase()
+  // Use immediate searchTerm so filtering is reactive when typing
+  const q = (searchTerm || '').trim().toLowerCase()
     const filtered = repositories.filter(repo => {
       if (!q) return !languageFilter || repo.language === languageFilter
 
@@ -453,7 +454,7 @@ export default function Dashboard() {
     })
 
     return filtered
-  }, [repositories, debouncedSearchTerm, languageFilter, sortBy])
+  }, [repositories, debouncedSearchTerm, languageFilter, sortBy, searchTerm])
 
   const languages = useMemo(() => 
     Array.from(new Set(repositories.map(r => r.language).filter(Boolean))) as string[],
@@ -505,7 +506,19 @@ export default function Dashboard() {
               </button>
               
               <button
-                onClick={() => signOut()}
+                onClick={async () => {
+                  // Revoke token on server, clear storage, then sign out
+                  try {
+                    await fetch('/api/auth/revoke', { method: 'POST' })
+                  } catch {
+                    // ignore
+                  }
+                  // Clear local caches and storages that may remember account
+                  try { window.localStorage.clear() } catch {}
+                  try { window.sessionStorage.clear() } catch {}
+                  // Sign out and redirect to sign-in so GitHub account picker appears
+                  await signOut({ callbackUrl: '/api/auth/signin' })
+                }}
                 className="flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors focus-ring"
                 aria-label="Sign out"
               >
@@ -572,10 +585,15 @@ export default function Dashboard() {
                 type="text"
                 placeholder="Search repositories..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(String(e.target.value || ''))}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 aria-label="Search repositories"
               />
+              {/* Visible debug: show current query and matched count */}
+              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 text-sm text-gray-600 flex items-center space-x-2">
+                <span className="px-3 py-1 bg-gray-100 rounded-full">{filteredRepositories.length} matches</span>
+                <span className="px-2 py-1 bg-gray-50 rounded-full text-xs text-gray-500">q: {JSON.stringify(debouncedSearchTerm.trim())}</span>
+              </div>
             </div>
 
             {/* Language Filter */}
