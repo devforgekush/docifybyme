@@ -1,6 +1,6 @@
-# DocifyByMe - AI-Powered Documentation Generator
+# DocifyByMe
 
-A modern web application that automatically generates comprehensive documentation for GitHub repositories using advanced AI models.
+DocifyByMe automates the creation of high-quality documentation for GitHub repositories using advanced AI models. It helps teams onboard faster and maintain clear, accurate project docs.
 
 ## 🚀 Features
 
@@ -71,6 +71,11 @@ A modern web application that automatically generates comprehensive documentatio
 
 5. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
+
+## Live demo
+
+A live demo is available at: https://docifybyme.example.com  
+(Replace with the actual URL when the demo is deployed)
 
 ## 🔧 Configuration
 
@@ -145,4 +150,4 @@ If you have any questions or need help, please open an issue on GitHub.
 
 ---
 
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by devforgekush**
