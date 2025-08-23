@@ -426,9 +426,15 @@ export default function Dashboard() {
   }, [])
 
   const filteredRepositories = useMemo(() => {
+    const q = debouncedSearchTerm.trim().toLowerCase()
     const filtered = repositories.filter(repo => {
-      const matchesSearch = repo.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                           repo.description?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      if (!q) return !languageFilter || repo.language === languageFilter
+
+      const name = (repo.name || '').toLowerCase()
+      const full = (repo.full_name || '').toLowerCase()
+      const desc = (repo.description || '').toLowerCase()
+
+      const matchesSearch = name.includes(q) || full.includes(q) || desc.includes(q)
       const matchesLanguage = !languageFilter || repo.language === languageFilter
       return matchesSearch && matchesLanguage
     })

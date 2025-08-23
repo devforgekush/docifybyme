@@ -95,6 +95,28 @@ body {
   outline-offset: 2px;
 }
 
+/* Form controls: ensure colors use design tokens for good contrast in both themes */
+input,
+select,
+textarea,
+button {
+  background: var(--input);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+/* Make placeholders clearly visible */
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+/* Ensure tailwind utility .bg-white maps to our theme where necessary */
+.bg-white {
+  background-color: var(--background) !important;
+}
+
 /* Smooth scrolling for anchor links */
 html {
   scroll-padding-top: 2rem;
