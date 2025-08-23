@@ -16,7 +16,7 @@
 - [ ] Save Client ID and Secret securely
 
 ### 🤖 AI Services
-- [ ] Get Google Gemini API key
+- [ ] Get OpenRouter API key (for Gemini 2.5 Pro)
 - [ ] Get Mistral AI API key
 - [ ] Test both APIs in development
 - [ ] Set up rate limiting (optional)
@@ -46,7 +46,7 @@ GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
 GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # AI APIs
-GOOGLE_GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPENROUTER_API_KEY=your_openrouter_api_key
 MISTRAL_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # App Configuration

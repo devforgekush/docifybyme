@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest'
+import { cache } from './cache'
 
 export interface GitHubRepository {
   id: number
@@ -24,21 +25,31 @@ export interface RepositoryFile {
 
 export class GitHubService {
   private octokit: Octokit
+  private readonly cacheTTL = 10 * 60 * 1000 // 10 minutes for repositories
+  private readonly fileCacheTTL = 5 * 60 * 1000 // 5 minutes for files
 
   constructor(accessToken: string) {
     this.octokit = new Octokit({
-      auth: accessToken
+      auth: accessToken,
+      timeZone: 'UTC'
     })
   }
 
   async getUserRepositories(): Promise<GitHubRepository[]> {
+    const cacheKey = `repos:${this.octokit.auth}`
+    const cached = cache.get<GitHubRepository[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     try {
       const { data } = await this.octokit.rest.repos.listForAuthenticatedUser({
         sort: 'updated',
-        per_page: 100
+        per_page: 100,
+        type: 'all'
       })
 
-      return data.map(repo => ({
+      const repositories = data.map(repo => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
@@ -51,6 +62,9 @@ export class GitHubService {
         updated_at: repo.updated_at,
         default_branch: repo.default_branch
       }))
+
+      cache.set(cacheKey, repositories, this.cacheTTL)
+      return repositories
     } catch (error) {
       console.error('Error fetching repositories:', error)
       throw new Error('Failed to fetch repositories')
@@ -58,6 +72,12 @@ export class GitHubService {
   }
 
   async getRepositoryStructure(owner: string, repo: string, path: string = ''): Promise<RepositoryFile[]> {
+    const cacheKey = `structure:${owner}:${repo}:${path}`
+    const cached = cache.get<RepositoryFile[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     try {
       const { data } = await this.octokit.rest.repos.getContent({
         owner,
@@ -65,21 +85,22 @@ export class GitHubService {
         path
       })
 
-      if (Array.isArray(data)) {
-        return data.map(item => ({
-          name: item.name,
-          path: item.path,
-          type: item.type as 'file' | 'dir',
-          size: item.size
-        }))
-      } else {
-        return [{
-          name: data.name,
-          path: data.path,
-          type: data.type as 'file' | 'dir',
-          size: data.size
-        }]
-      }
+      const structure = Array.isArray(data) 
+        ? data.map(item => ({
+            name: item.name,
+            path: item.path,
+            type: item.type as 'file' | 'dir',
+            size: item.size
+          }))
+        : [{
+            name: data.name,
+            path: data.path,
+            type: data.type as 'file' | 'dir',
+            size: data.size
+          }]
+
+      cache.set(cacheKey, structure, this.fileCacheTTL)
+      return structure
     } catch (error) {
       console.error('Error fetching repository structure:', error)
       return []
@@ -87,6 +108,12 @@ export class GitHubService {
   }
 
   async getFileContent(owner: string, repo: string, path: string): Promise<string | null> {
+    const cacheKey = `file:${owner}:${repo}:${path}`
+    const cached = cache.get<string>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     try {
       const { data } = await this.octokit.rest.repos.getContent({
         owner,
@@ -95,7 +122,9 @@ export class GitHubService {
       })
 
       if ('content' in data && data.content) {
-        return Buffer.from(data.content, 'base64').toString('utf-8')
+        const content = Buffer.from(data.content, 'base64').toString('utf-8')
+        cache.set(cacheKey, content, this.fileCacheTTL)
+        return content
       }
 
       return null
@@ -106,6 +135,12 @@ export class GitHubService {
   }
 
   async getRepositoryReadme(owner: string, repo: string): Promise<string | null> {
+    const cacheKey = `readme:${owner}:${repo}`
+    const cached = cache.get<string>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     try {
       const { data } = await this.octokit.rest.repos.getReadme({
         owner,
@@ -113,7 +148,9 @@ export class GitHubService {
       })
 
       if (data.content) {
-        return Buffer.from(data.content, 'base64').toString('utf-8')
+        const content = Buffer.from(data.content, 'base64').toString('utf-8')
+        cache.set(cacheKey, content, this.fileCacheTTL)
+        return content
       }
 
       return null
@@ -124,6 +161,12 @@ export class GitHubService {
   }
 
   async getRepositoryData(owner: string, repo: string) {
+    const cacheKey = `repoData:${owner}:${repo}`
+    const cached = cache.get<Record<string, unknown>>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     try {
       // Get repository details
       const { data: repoData } = await this.octokit.rest.repos.get({
@@ -141,22 +184,47 @@ export class GitHubService {
       const importantFiles = ['package.json', 'requirements.txt', 'Cargo.toml', 'pom.xml', 'composer.json']
       const fileContents: Record<string, string> = {}
 
-      for (const filename of importantFiles) {
+      // Fetch important files in parallel for better performance
+      const filePromises = importantFiles.map(async (filename) => {
         const content = await this.getFileContent(owner, repo, filename)
         if (content) {
           fileContents[filename] = content
         }
-      }
+      })
 
-      return {
+      await Promise.all(filePromises)
+
+      const result = {
         ...repoData,
         files: structure,
         readme,
         importantFiles: fileContents
       }
+
+      cache.set(cacheKey, result, this.cacheTTL)
+      return result
     } catch (error) {
       console.error('Error fetching repository data:', error)
       throw new Error('Failed to fetch repository data')
+    }
+  }
+
+  // Clear cache for a specific repository
+  clearRepositoryCache(owner: string, repo: string): void {
+    const patterns = [
+      `repos:${this.octokit.auth}`,
+      `structure:${owner}:${repo}:`,
+      `file:${owner}:${repo}:`,
+      `readme:${owner}:${repo}`,
+      `repoData:${owner}:${repo}`
+    ]
+    
+    for (const pattern of patterns) {
+      for (const key of cache.keys()) {
+        if (key.startsWith(pattern)) {
+          cache.delete(key)
+        }
+      }
     }
   }
 }
