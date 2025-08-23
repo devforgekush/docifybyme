@@ -575,7 +575,7 @@ export default function Dashboard() {
           <ErrorDisplay error={error} onRetry={fetchRepositories} />
         )}
 
-        {/* Filters */}
+             {/* Filters */}
         <div className="mb-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
@@ -587,4 +587,141 @@ export default function Dashboard() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(String(e.target.value || ''))}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-          
+                aria-label="Search repositories"
+              />
+              {/* Visible debug: show current query and matched count */}
+              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 text-sm text-gray-600 flex items-center space-x-2">
+                <span className="px-3 py-1 bg-gray-100 rounded-full">{filteredRepositories.length} matches</span>
+                <span className="px-2 py-1 bg-gray-50 rounded-full text-xs text-gray-500">q: {JSON.stringify(debouncedSearchTerm.trim())}</span>
+              </div>
+            </div>
+
+            {/* Language Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={languageFilter}
+                onChange={(e) => setLanguageFilter(e.target.value)}
+                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-colors"
+                aria-label="Filter by language"
+              >
+                <option value="">All Languages</option>
+                {languages.map(lang => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'updated' | 'stars')}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              aria-label="Sort repositories"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="updated">Sort by Updated</option>
+              <option value="stars">Sort by Stars</option>
+            </select>
+          </div>
+
+          <div className="text-sm text-gray-500">
+            {filteredRepositories.length} of {repositories.length} repositories
+          </div>
+        </div>
+
+        {/* Repository Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence>
+            {filteredRepositories.map((repo) => (
+              <RepositoryCard
+                key={repo.id}
+                repo={repo}
+                onGenerate={generateDocumentation}
+                onShowDocs={showDocumentation}
+                isGenerating={generatingRepos.has(repo.id)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Empty State */}
+        {filteredRepositories.length === 0 && !loading && (
+          <motion.div 
+            className="text-center py-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No repositories found</h3>
+            <p className="text-gray-500">
+              {searchTerm || languageFilter 
+                ? 'Try adjusting your search or filters.'
+                : 'You don\'t have any repositories yet.'
+              }
+            </p>
+          </motion.div>
+        )}
+      </main>
+
+      {/* Documentation Modal */}
+      <AnimatePresence>
+        {documentationModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setDocumentationModal(prev => ({ ...prev, isOpen: false }))}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Documentation for {documentationModal.repositoryName}
+                  </h2>
+                  {documentationModal.provider && (
+                    <p className="text-sm text-gray-500">
+                      Generated by {documentationModal.provider}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => copyToClipboard(documentationModal.content)}
+                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors focus-ring rounded-lg"
+                    aria-label="Copy documentation to clipboard"
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={() => setDocumentationModal(prev => ({ ...prev, isOpen: false }))}
+                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors focus-ring rounded-lg"
+                    aria-label="Close modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono bg-gray-50 p-4 rounded-lg">
+                  {documentationModal.content}
+                </pre>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
