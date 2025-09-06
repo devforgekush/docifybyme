@@ -33,21 +33,7 @@ interface Repository extends GitHubRepository {
 }
 
 // Custom hooks for better performance
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
+// Debounce helper removed: search filtering uses immediate `searchTerm` now.
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -281,8 +267,7 @@ export default function Dashboard() {
     searchTerm: ''
   })
 
-  // Debounce search term for better performance
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  // (debounce removed) use immediate searchTerm for instant filtering
 
   const fetchRepositories = useCallback(async () => {
     // Cancel previous request if it exists
@@ -586,13 +571,9 @@ export default function Dashboard() {
                 placeholder="Search repositories..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(String(e.target.value || ''))}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="relative z-20 w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 aria-label="Search repositories"
               />
-              {/* Search status (hidden in production) */}
-              <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 0 }} aria-hidden>
-                {/* Intentionally empty to avoid overlaying the input */}
-              </div>
             </div>
 
             {/* Language Filter */}
@@ -601,7 +582,7 @@ export default function Dashboard() {
               <select
                 value={languageFilter}
                 onChange={(e) => setLanguageFilter(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-colors"
+                className="relative z-20 pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-colors"
                 aria-label="Filter by language"
               >
                 <option value="">All Languages</option>
