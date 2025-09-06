@@ -589,10 +589,9 @@ export default function Dashboard() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 aria-label="Search repositories"
               />
-              {/* Visible debug: show current query and matched count */}
-              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 text-sm text-gray-600 flex items-center space-x-2">
-                <span className="px-3 py-1 bg-gray-100 rounded-full">{filteredRepositories.length} matches</span>
-                <span className="px-2 py-1 bg-gray-50 rounded-full text-xs text-gray-500">q: {JSON.stringify(debouncedSearchTerm.trim())}</span>
+              {/* Search status (hidden in production) */}
+              <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 0 }} aria-hidden>
+                {/* Intentionally empty to avoid overlaying the input */}
               </div>
             </div>
 
