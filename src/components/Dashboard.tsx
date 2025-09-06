@@ -610,6 +610,14 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* DEBUG: runtime state inspector - remove after debugging */}
+        <div className="mb-4 p-3 bg-white/5 rounded-md text-sm text-gray-300">
+          <div><strong>debug.searchTerm:</strong> {String(searchTerm)}</div>
+          <div><strong>debug.languageFilter:</strong> {String(languageFilter)}</div>
+          <div><strong>debug.languages:</strong> {JSON.stringify(languages)}</div>
+          <div><strong>debug.filteredCount:</strong> {filteredRepositories.length}</div>
+        </div>
+
         {/* Repository Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
