@@ -67,6 +67,52 @@
   }
 }
 
+/* Dashboard-specific dark adjustments to improve contrast on cards and controls */
+@media (prefers-color-scheme: dark) {
+  /* Make utility .bg-white act like a deep card background in dark mode */
+  .bg-white {
+    background-color: #070708 !important;
+  }
+
+  /* Card backgrounds and borders */
+  .rounded-xl, .rounded-lg {
+    background-color: #060606;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    border-color: rgba(255,255,255,0.04);
+  }
+
+  /* Ensure text on dark cards is readable */
+  .text-gray-900, .text-gray-800 {
+    color: #e6eef8 !important;
+  }
+
+  .text-gray-500, .text-gray-400, .text-gray-600 {
+    color: #9aa6b2 !important;
+  }
+
+  /* Inputs/selects contrast */
+  input, select, textarea, button {
+    background: #0b0b0c !important;
+    color: #e6eef8 !important;
+    border-color: rgba(255,255,255,0.06) !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #7f8a93 !important;
+    opacity: 1 !important;
+  }
+
+  /* Make subtle badges stand out */
+  .bg-gray-100, .bg-gray-50 {
+    background-color: rgba(255,255,255,0.04) !important;
+  }
+
+  /* Adjust header background to be darker */
+  header.bg-white {
+    background-color: #050506 !important;
+  }
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;
