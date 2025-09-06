@@ -5,7 +5,7 @@ Disallow: /api/
 Disallow: /dashboard/
 
 # Host
-Host: http://localhost:3000
+Host: https://docifybyme.netlify.app
 
 # Sitemaps
-Sitemap: http://localhost:3000/sitemap.xml
+Sitemap: https://docifybyme.netlify.app/sitemap.xml

@@ -158,3 +158,4 @@ async function doBackgroundSync() {
   // Implement background sync logic here
   console.log('Background sync triggered')
 }
+
