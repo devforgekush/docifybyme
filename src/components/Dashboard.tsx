@@ -454,7 +454,7 @@ export default function Dashboard() {
     })
 
     return filtered
-  }, [repositories, debouncedSearchTerm, languageFilter, sortBy, searchTerm])
+  }, [repositories, languageFilter, sortBy, searchTerm])
 
   const languages = useMemo(() => 
     Array.from(new Set(repositories.map(r => r.language).filter(Boolean))) as string[],

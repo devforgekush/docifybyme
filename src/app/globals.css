@@ -109,7 +109,18 @@
 
   /* Adjust header background to be darker */
   header.bg-white {
-    background-color: #050506 !important;
+    background-color: #020203 !important;
+  }
+
+  /* Make main page background slightly lighter than cards so cards pop */
+  .min-h-screen.bg-gradient-to-br {
+    background: linear-gradient(180deg, rgba(10,10,10,1) 0%, rgba(18,18,18,1) 100%) !important;
+  }
+
+  /* Search pill and badge visibility */
+  .px-3.py-1.bg-gray-100.rounded-full, .px-2.py-1.bg-gray-50.rounded-full {
+    background-color: rgba(255,255,255,0.03) !important;
+    color: #cbd5e1 !important;
   }
 }
 
