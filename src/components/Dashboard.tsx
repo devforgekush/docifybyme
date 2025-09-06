@@ -33,7 +33,15 @@ interface Repository extends GitHubRepository {
 }
 
 // Custom hooks for better performance
-// Debounce helper removed: search filtering uses immediate `searchTerm` now.
+// Small debounce helper to avoid excessive re-renders while typing
+function useDebounce<T>(value: T, delay = 150): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(id)
+  }, [value, delay])
+  return debouncedValue
+}
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -267,7 +275,8 @@ export default function Dashboard() {
     searchTerm: ''
   })
 
-  // (debounce removed) use immediate searchTerm for instant filtering
+  // Use a short debounce to smooth UI updates and prevent flicker
+  const debouncedSearchTerm = useDebounce(searchTerm, 150)
 
   const fetchRepositories = useCallback(async () => {
     // Cancel previous request if it exists
@@ -411,8 +420,8 @@ export default function Dashboard() {
   }, [])
 
   const filteredRepositories = useMemo(() => {
-  // Use immediate searchTerm so filtering is reactive when typing
-  const q = (searchTerm || '').trim().toLowerCase()
+    // Use debounced searchTerm to smooth UI updates
+    const q = (debouncedSearchTerm || '').trim().toLowerCase()
     const filtered = repositories.filter(repo => {
       if (!q) return !languageFilter || repo.language === languageFilter
 
@@ -439,7 +448,7 @@ export default function Dashboard() {
     })
 
     return filtered
-  }, [repositories, languageFilter, sortBy, searchTerm])
+  }, [repositories, languageFilter, sortBy, debouncedSearchTerm])
 
   const languages = useMemo(() => 
     Array.from(new Set(repositories.map(r => r.language).filter(Boolean))) as string[],
@@ -610,13 +619,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* DEBUG: runtime state inspector - remove after debugging */}
-        <div className="mb-4 p-3 bg-white/5 rounded-md text-sm text-gray-300">
-          <div><strong>debug.searchTerm:</strong> {String(searchTerm)}</div>
-          <div><strong>debug.languageFilter:</strong> {String(languageFilter)}</div>
-          <div><strong>debug.languages:</strong> {JSON.stringify(languages)}</div>
-          <div><strong>debug.filteredCount:</strong> {filteredRepositories.length}</div>
-        </div>
+  {/* debug panel removed */}
 
         {/* Repository Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
